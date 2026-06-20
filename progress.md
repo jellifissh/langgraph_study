@@ -2,13 +2,13 @@
 
 ## 当前阶段
 
-第 7 天 / 共 30 天
+第 8 天 / 共 30 天
 
 ## 今天目标
 
-学习 Interrupt：让图在某个节点内部暂停，等待人类输入，然后用同一个 thread_id 恢复执行。
+学习 Interrupt 副作用安全：interrupt 恢复时节点会从头执行，所以 interrupt 前不能随便写外部系统。
 
-Day 7 流程：
+Day 8 流程和 Day 7 基本一致，但新增 safe / unsafe 两种 human_review 写法：
 
 ```text
 START -> intake -> normalize -> audit -> route_by_audit_result
@@ -35,6 +35,7 @@ START -> intake -> normalize -> audit -> route_by_audit_result
 - thread_id = 某个具体任务的存档槽位 / 任务编号
 - Interrupt = 节点内部的暂停点
 - Command(resume=...) = 恢复暂停节点时传回的人类输入
+- Side effect = 外部副作用，例如写数据库、发短信、发 MQ、调支付接口
 
 ## Checkpointer 与 Interrupt 的关系
 
@@ -52,14 +53,36 @@ thread_id = 存档槽位
 Command(resume=...) = 继续游戏时输入的选择
 ```
 
-## Day 7 需要重点观察
+## Day 8 需要重点观察
 
-- `human_review()` 里调用 `interrupt(payload)`。
-- 第一次运行到 `interrupt(payload)` 时，图会暂停。
-- `invoke()` 返回值里会出现 `__interrupt__`。
-- 使用同一个 `thread_id` 调用 `Command(resume={...})` 后，图会从 human_review 继续。
-- approve 会进入 delivery。
-- reject 会进入 error_report。
+- `unsafe_human_review()` 在 `interrupt(payload)` 前写外部日志。
+- 恢复时节点从头执行，所以 unsafe 的前置外部日志会写两次。
+- `safe_human_review()` 在 `interrupt(payload)` 前只准备 payload。
+- safe 的外部日志放在 resume 之后，所以只写一次。
+- `EXTERNAL_REVIEW_LOG` 是教学用的外部系统模拟器，不是真实生产存储。
+
+## 副作用安全规则
+
+interrupt 前可以做：
+
+```text
+纯计算
+整理 payload
+读取 State
+构造给人看的复核材料
+```
+
+interrupt 前不要做：
+
+```text
+写数据库
+发短信
+发邮件
+发 MQ
+扣库存
+调支付
+任何不可重复执行的外部操作
+```
 
 ## State 分区规则
 
@@ -79,6 +102,7 @@ Command(resume=...) = 继续游戏时输入的选择
 - Store 还没开始学
 - Time travel 还没开始学
 - 真实 UI 表单还没接入
+- 幂等键还没开始专项练习
 - 需要继续练习：interrupt 前的副作用必须谨慎，因为 resume 时节点会重新从头执行
 
 ## 代码产出记录
@@ -96,15 +120,16 @@ Command(resume=...) = 继续游戏时输入的选择
 | 第 6 天 | `tests/test_checkpointer_graph.py` | 待本地运行 | 覆盖最新状态、历史状态、thread 隔离 |
 | 第 7 天 | `src/audit_pipeline_poc/interrupt_graph.py` | 待本地运行 | 用 interrupt 暂停人工复核 |
 | 第 7 天 | `tests/test_interrupt_graph.py` | 待本地运行 | 覆盖暂停、approve 恢复、reject 恢复、非 review 不暂停 |
+| 第 8 天 | `src/audit_pipeline_poc/interrupt_safety_graph.py` | 待本地运行 | 演示 interrupt 前副作用重复执行风险 |
+| 第 8 天 | `tests/test_interrupt_safety_graph.py` | 待本地运行 | 覆盖 unsafe 重复写、safe 单次写、错误 thread resume |
 
 ## 下一步计划
 
-运行第 7 天程序，观察 `__interrupt__`、`interrupt_payload`、`Command(resume=...)` 三件事。
+运行第 8 天程序，对比 unsafe_report 和 safe_report。
 
 重点理解：
 
-- Checkpointer 是存档系统，不是暂停按钮。
-- Interrupt 才是暂停按钮。
-- resume 的值会回到 `interrupt(payload)` 那一行，成为它的返回值。
-- 恢复时必须使用同一个 thread_id。
-- 这就是 Agent 工程里 human-in-the-loop 的核心路径。
+- Interrupt 恢复时，节点会重新从头执行。
+- interrupt 前只适合做纯计算。
+- 外部副作用尽量放在 resume 之后。
+- 如果副作用必须放在 interrupt 前，就必须设计幂等键。
