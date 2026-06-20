@@ -2,13 +2,13 @@
 
 ## 当前阶段
 
-第 5 天 / 共 30 天
+第 6 天 / 共 30 天
 
 ## 今天目标
 
-学习 Reducer：账本字段被多个节点更新时，到底是覆盖，还是追加。
+学习 Checkpointer：让图执行过程可以存档、查询最新状态、查询历史状态。
 
-Day 5 新流程和 Day 4 基本一致，但把部分 list 字段改成 reducer 累积：
+Day 6 流程和 Day 5 基本一致，但 compile 时加入 checkpointer：
 
 ```text
 START -> intake -> normalize -> audit -> route_by_audit_result
@@ -29,33 +29,38 @@ START -> intake -> normalize -> audit -> route_by_audit_result
 - workflow_path = 单次运行的真实路线记录
 - State Schema = 账本字段设计
 - Reducer = 字段更新规则
+- Checkpointer = 图执行状态存档器
+- thread_id = 存档槽位 / 任务编号
 
-## Reducer 大白话
+## Checkpointer 大白话
 
-默认更新规则：
-
-```text
-新值覆盖旧值
-```
-
-带 reducer 的更新规则：
+不带 checkpointer：
 
 ```text
-旧值 + 新值 合并成最终值
+流程跑完就只剩最终结果
 ```
 
-本项目 Day 5 使用：
+带 checkpointer：
+
+```text
+流程每一步都会留下 State 快照
+```
+
+本项目 Day 6 使用：
 
 ```python
-Annotated[list[str], add]
+from langgraph.checkpoint.memory import InMemorySaver
+
+graph.compile(checkpointer=InMemorySaver())
 ```
 
-用于累积：
+## Day 6 需要重点观察
 
-- `workflow_path`
-- `audit_errors`
-- `warnings`
-- `audit_events`
+- `thread_id`：区分不同任务的存档槽位。
+- `app.get_state(config)`：读取某个 thread 的最新 State。
+- `app.get_state_history(config)`：读取某个 thread 的历史 State 快照。
+- `history_length`：观察一次图运行大概保存了多少个 checkpoint。
+- `snapshot.next`：如果为空，说明图已经跑完；如果不为空，说明还有节点待执行。
 
 ## State 分区规则
 
@@ -71,10 +76,10 @@ Annotated[list[str], add]
 
 ## 薄弱点
 
-- Checkpointer 还没开始学
 - Interrupt 还没开始学
-- 需要继续练习：哪些字段应该覆盖，哪些字段应该追加
-- 需要继续练习：reducer 适合审计事件流水，但不适合所有字段
+- Store 还没开始学
+- Time travel 还没开始学
+- 需要继续练习：checkpointer 是短期线程状态，store / 数据库才适合长期跨任务记忆
 
 ## 代码产出记录
 
@@ -87,14 +92,17 @@ Annotated[list[str], add]
 | 第 4 天 | `tests/test_state_schema_graph.py` | 待本地运行 | 覆盖结构化 State 的 passed / review / failed |
 | 第 5 天 | `src/audit_pipeline_poc/reducer_graph.py` | 待本地运行 | 用 reducer 累积 list 字段 |
 | 第 5 天 | `tests/test_reducer_graph.py` | 待本地运行 | 覆盖 path、warnings、errors、events 的累积行为 |
+| 第 6 天 | `src/audit_pipeline_poc/checkpointer_graph.py` | 待本地运行 | 用 checkpointer 保存 State 快照 |
+| 第 6 天 | `tests/test_checkpointer_graph.py` | 待本地运行 | 覆盖最新状态、历史状态、thread 隔离 |
 
 ## 下一步计划
 
-运行第 5 天程序，观察 `workflow_path` 和 `audit_events` 如何由多个节点逐步追加。
+运行第 6 天程序，观察 `latest` 和 `history` 的区别。
 
 重点理解：
 
-- 不带 reducer：同一个字段更新时默认覆盖。
-- 带 reducer：同一个字段可以按规则合并。
-- reducer 适合用于事件流水、路线记录、错误列表、warning 列表。
-- `audit_status` 这种单一结论不应该用 reducer，应该覆盖成最新结论。
+- Checkpointer 不是普通日志，它保存的是图执行过程中的 State 快照。
+- 必须传 `thread_id`，否则存档器不知道你要把状态放到哪个任务槽位里。
+- get_state 看最新存档。
+- get_state_history 看历史存档。
+- 这为后面的 Interrupt / 人工复核恢复执行打基础。
