@@ -12,6 +12,9 @@ htmlcov/
 venv/
 env/
 
+# Generated local outputs
+outputs/
+
 # Local files
 .env
 .DS_Store
