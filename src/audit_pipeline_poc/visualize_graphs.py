@@ -1,9 +1,9 @@
-"""Day 3: visualize LangGraph workflows as Mermaid diagrams.
+"""Visualize LangGraph workflows as Mermaid diagrams.
 
 大白话版本：
 
-- 昨天我们已经会跑图。
-- 今天我们要看图。
+- 我们已经会跑图。
+- 现在要能看图。
 - Mermaid = 一种用文字描述流程图的格式。
 
 本文件不会提交生成出来的图片或临时输出，只负责生成本地观察用的图文件。
@@ -15,6 +15,7 @@ from pathlib import Path
 
 from audit_pipeline_poc.basic_graph import build_graph as build_basic_graph
 from audit_pipeline_poc.conditional_graph import build_graph as build_conditional_graph
+from audit_pipeline_poc.state_schema_graph import build_graph as build_state_schema_graph
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = PROJECT_ROOT / "outputs" / "graphs"
@@ -73,6 +74,7 @@ def export_all_graphs() -> list[dict[str, str | None]]:
     graphs = {
         "day1_basic_graph": build_basic_graph(),
         "day2_conditional_graph": build_conditional_graph(),
+        "day4_state_schema_graph": build_state_schema_graph(),
     }
 
     return [export_graph(name, app) for name, app in graphs.items()]
