@@ -14,6 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from audit_pipeline_poc.basic_graph import build_graph as build_basic_graph
+from audit_pipeline_poc.checkpointer_graph import build_graph as build_checkpointer_graph
 from audit_pipeline_poc.conditional_graph import build_graph as build_conditional_graph
 from audit_pipeline_poc.reducer_graph import build_graph as build_reducer_graph
 from audit_pipeline_poc.state_schema_graph import build_graph as build_state_schema_graph
@@ -77,6 +78,7 @@ def export_all_graphs() -> list[dict[str, str | None]]:
         "day2_conditional_graph": build_conditional_graph(),
         "day4_state_schema_graph": build_state_schema_graph(),
         "day5_reducer_graph": build_reducer_graph(),
+        "day6_checkpointer_graph": build_checkpointer_graph(),
     }
 
     return [export_graph(name, app) for name, app in graphs.items()]
