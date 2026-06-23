@@ -11,8 +11,9 @@ $ErrorActionPreference = "Stop"
 # 8. 运行 Day 6 checkpointer 存档流程
 # 9. 运行 Day 7 interrupt 暂停恢复流程
 # 10. 运行 Day 8 interrupt 副作用安全流程
-# 11. 导出 Mermaid 流程图
-# 12. 运行全部测试
+# 11. 运行 Day 9 幂等键保护流程
+# 12. 导出 Mermaid 流程图
+# 13. 运行全部测试
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
@@ -24,40 +25,43 @@ Write-Host "Project root: $ProjectRoot"
 $VenvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
 
 if (-not (Test-Path $VenvPython)) {
-    Write-Host "\n[1/11] .venv not found, creating virtual environment..." -ForegroundColor Yellow
+    Write-Host "\n[1/12] .venv not found, creating virtual environment..." -ForegroundColor Yellow
     python -m venv .venv
 } else {
-    Write-Host "\n[1/11] .venv already exists." -ForegroundColor Green
+    Write-Host "\n[1/12] .venv already exists." -ForegroundColor Green
 }
 
-Write-Host "\n[2/11] Installing dependencies..." -ForegroundColor Cyan
+Write-Host "\n[2/12] Installing dependencies..." -ForegroundColor Cyan
 & $VenvPython -m pip install -e ".[dev]"
 
-Write-Host "\n[3/11] Running Day 1 basic graph..." -ForegroundColor Cyan
+Write-Host "\n[3/12] Running Day 1 basic graph..." -ForegroundColor Cyan
 & $VenvPython -m audit_pipeline_poc.basic_graph
 
-Write-Host "\n[4/11] Running Day 2 conditional graph..." -ForegroundColor Cyan
+Write-Host "\n[4/12] Running Day 2 conditional graph..." -ForegroundColor Cyan
 & $VenvPython -m audit_pipeline_poc.conditional_graph
 
-Write-Host "\n[5/11] Running Day 4 state schema graph..." -ForegroundColor Cyan
+Write-Host "\n[5/12] Running Day 4 state schema graph..." -ForegroundColor Cyan
 & $VenvPython -m audit_pipeline_poc.state_schema_graph
 
-Write-Host "\n[6/11] Running Day 5 reducer graph..." -ForegroundColor Cyan
+Write-Host "\n[6/12] Running Day 5 reducer graph..." -ForegroundColor Cyan
 & $VenvPython -m audit_pipeline_poc.reducer_graph
 
-Write-Host "\n[7/11] Running Day 6 checkpointer graph..." -ForegroundColor Cyan
+Write-Host "\n[7/12] Running Day 6 checkpointer graph..." -ForegroundColor Cyan
 & $VenvPython -m audit_pipeline_poc.checkpointer_graph
 
-Write-Host "\n[8/11] Running Day 7 interrupt graph..." -ForegroundColor Cyan
+Write-Host "\n[8/12] Running Day 7 interrupt graph..." -ForegroundColor Cyan
 & $VenvPython -m audit_pipeline_poc.interrupt_graph
 
-Write-Host "\n[9/11] Running Day 8 interrupt safety graph..." -ForegroundColor Cyan
+Write-Host "\n[9/12] Running Day 8 interrupt safety graph..." -ForegroundColor Cyan
 & $VenvPython -m audit_pipeline_poc.interrupt_safety_graph
 
-Write-Host "\n[10/11] Exporting graph diagrams..." -ForegroundColor Cyan
+Write-Host "\n[10/12] Running Day 9 idempotency graph..." -ForegroundColor Cyan
+& $VenvPython -m audit_pipeline_poc.idempotency_graph
+
+Write-Host "\n[11/12] Exporting graph diagrams..." -ForegroundColor Cyan
 & $VenvPython -m audit_pipeline_poc.visualize_graphs
 
-Write-Host "\n[11/11] Running tests..." -ForegroundColor Cyan
+Write-Host "\n[12/12] Running tests..." -ForegroundColor Cyan
 & $VenvPython -m pytest
 
 Write-Host "\nAll checks passed. Humanity survives another command line session." -ForegroundColor Green
