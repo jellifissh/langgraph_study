@@ -2,17 +2,19 @@
 
 ## 当前阶段
 
-第 12 天 / 共 30 天
+第 13 天 / 共 30 天
 
 ## 今天目标
 
-学习 LLM Planner：把 Day 11 的手写 `plan_tool_calls()` 换成模型规划工具调用。模型配置从本机环境变量读取 DeepSeek。
+学习 Agent Loop / ReAct-style Tool Loop：模型不再只规划一次，而是每一轮看当前状态和工具结果，决定下一步继续调工具还是结束。
 
 ```text
-START -> intake -> llm_plan_tool_calls -> execute_tools -> synthesize_audit -> route_by_audit_status
-                                                                            ├─ passed      -> delivery -> END
-                                                                            ├─ need_review -> review -> delivery -> END
-                                                                            └─ failed      -> error_report -> END
+START -> intake -> agent_decide -> route_after_agent_decide
+                         ├─ tool  -> execute_agent_tool -> agent_decide -> ...
+                         └─ final -> finalize_agent_answer -> route_by_audit_status
+                                                                  ├─ passed      -> delivery -> END
+                                                                  ├─ need_review -> review -> delivery -> END
+                                                                  └─ failed      -> error_report -> END
 ```
 
 ## 已掌握概念
@@ -39,64 +41,59 @@ START -> intake -> llm_plan_tool_calls -> execute_tools -> synthesize_audit -> r
 - Tool Registry = 工具注册表，负责把工具名映射到真实函数
 - Tool Executor = 工具执行节点，负责执行工具并返回结果
 - LLM Planner = 用模型根据任务和工具列表生成 tool_calls
+- Agent Loop = decide -> act -> observe -> decide 的多轮循环
 
-## Day 12 LLM Planner 大白话
-
-Day 11：
-
-```text
-规则 planner 手写 tool_calls
-```
+## Day 13 Agent Loop 大白话
 
 Day 12：
 
 ```text
-把 company / revenue / net_profit / available_tools 给模型
-模型返回 JSON tool_calls
-executor 按 tool_calls 执行工具
+LLM 一次性生成 tool_calls
 ```
 
-LLM Planner 不是让模型随便幻想工具，而是让模型在已有工具列表里选择。
-
-## DeepSeek 环境变量
-
-本项目读取：
+Day 13：
 
 ```text
-DEEPSEEK_API_KEY
-DEEPSEEK_BASE_URL
-DEEPSEEK_MODEL
+LLM 每轮只决定下一步
+如果需要证据，就调用一个工具
+工具结果回来后，再让 LLM 决定下一步
+证据够了，就 final
 ```
 
-代码不会写死 key。
-测试使用 FakeClient，不会真的请求 DeepSeek。
-本地运行 demo 时，如果环境变量存在会用 DeepSeek；如果没有，会回退到 rule planner。
+这就是：
 
-## Day 12 需要重点观察
+```text
+decide -> execute tool -> observe -> decide -> execute tool -> observe -> final
+```
 
-- `DeepSeekChatClient.from_env()` 从环境变量读取模型配置。
-- `build_planner_messages()` 把可用工具列表和输出格式发给模型。
-- `parse_tool_calls_from_llm_response()` 解析模型返回的 JSON。
-- `make_llm_plan_tool_calls_node()` 支持注入 FakeClient，测试不依赖真实 API。
-- LLM 失败时可以回退到 rule planner。
+## Day 13 需要重点观察
+
+- `AgentAction` 有两类：`tool` 和 `final`。
+- `agent_decide` 负责决定下一步。
+- `execute_agent_tool` 只执行当前一个工具。
+- 工具执行后会回到 `agent_decide`，形成循环。
+- `max_agent_steps` 防止无限循环。
+- 没有 DeepSeek 环境变量时，会走 rule fallback loop。
 
 ## Agent 主线位置
 
-Day 12 对应 Agent 系统里的这一段：
+Day 13 对应 Agent 系统里的核心循环：
 
 ```text
 用户目标
   ↓
-LLM Planner 根据目标和工具列表生成 tool_calls
+LLM / Rule Agent Decide
   ↓
-Tool Executor 执行工具
+Tool Executor
   ↓
-Synthesizer 综合工具结果
+Observation / Tool Result
   ↓
-Graph 根据结论分流
+LLM / Rule Agent Decide
+  ↓
+Final Answer
 ```
 
-这是比 Day 11 更接近真实 Agent 的版本。
+这比 Day 12 更接近真正 Agent：不是一次规划，而是多轮观察和决策。
 
 ## 代码产出记录
 
@@ -123,20 +120,23 @@ Graph 根据结论分流
 | 第 11 天 | `tests/test_tool_calling_graph.py` | 待本地运行 | 覆盖工具函数、工具执行错误、passed/review/failed 路径 |
 | 第 12 天 | `src/audit_pipeline_poc/llm_planner_graph.py` | 待本地运行 | DeepSeek LLM planner 生成 tool_calls |
 | 第 12 天 | `tests/test_llm_planner_graph.py` | 待本地运行 | 覆盖 fake client、JSON 解析、未知工具、fallback、env 读取 |
+| 第 13 天 | `src/audit_pipeline_poc/agent_loop_graph.py` | 待本地运行 | 多轮 agent decide / tool / observe 循环 |
+| 第 13 天 | `tests/test_agent_loop_graph.py` | 待本地运行 | 覆盖 action 解析、fake LLM loop、rule fallback、step limit |
 
 ## 下一步计划
 
-运行第 12 天程序，重点观察：
+运行第 13 天程序，重点观察：
 
-- `planner_mode`
-- `llm_prompt`
-- `llm_response`
-- `tool_calls`
+- `agent_steps`
+- `current_action`
 - `tool_results`
+- `final_answer`
+- `workflow_path`
 
 重点理解：
 
-- LLM Planner 的输出不是自然语言，而是结构化 tool_calls。
-- 模型只能从已有工具列表里选，不能乱造工具。
-- Tool Executor 仍然是确定性执行器。
-- 测试里不要真的请求模型，要用 FakeClient。
+- Agent loop 不是一次性规划，而是多轮决策。
+- 每轮只做一个 action。
+- 工具结果是下一轮决策的观察输入。
+- 需要 `max_agent_steps` 兜住死循环。
+- 真实 LLM 负责 decide，代码仍然负责工具执行和状态流转。
