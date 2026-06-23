@@ -1,3 +1,5 @@
+import pytest
+
 from audit_pipeline_poc.idempotency_graph import (
     EXTERNAL_CALL_LOG,
     EXTERNAL_REVIEW_REQUESTS,
@@ -106,8 +108,12 @@ def test_wrong_thread_does_not_resume_original_interrupt_or_duplicate_request():
     assert "__interrupt__" in paused
     assert list(EXTERNAL_REVIEW_REQUESTS) == [key]
 
-    wrong_result = app.invoke(Command(resume={"decision": "approved"}), wrong_config)
-    assert wrong_result == {}
+    # A resume command must point to an existing paused thread.
+    # With a wrong thread_id, this LangGraph version tries to start a fresh run
+    # with an empty state, so our intake validation correctly raises.
+    with pytest.raises(ValueError, match="Missing required field: company"):
+        app.invoke(Command(resume={"decision": "approved"}), wrong_config)
+
     assert list(EXTERNAL_REVIEW_REQUESTS) == [key]
 
     final = app.invoke(
