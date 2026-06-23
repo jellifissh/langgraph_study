@@ -118,7 +118,7 @@ def test_tool_calling_graph_failed_missing_input_skips_tool_calling():
 
     assert result["audit_status"] == "failed"
     assert result["audit_errors"] == ["net_profit is missing"]
-    assert result.get("tool_calls") is None
+    assert result["tool_calls"] == []
     assert result["tool_results"] == []
     assert result["workflow_path"] == [
         "intake",
