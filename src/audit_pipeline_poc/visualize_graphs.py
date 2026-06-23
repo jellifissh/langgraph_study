@@ -16,6 +16,7 @@ from pathlib import Path
 from audit_pipeline_poc.basic_graph import build_graph as build_basic_graph
 from audit_pipeline_poc.checkpointer_graph import build_graph as build_checkpointer_graph
 from audit_pipeline_poc.conditional_graph import build_graph as build_conditional_graph
+from audit_pipeline_poc.idempotency_graph import build_graph as build_idempotency_graph
 from audit_pipeline_poc.interrupt_graph import build_graph as build_interrupt_graph
 from audit_pipeline_poc.interrupt_safety_graph import build_graph as build_interrupt_safety_graph
 from audit_pipeline_poc.reducer_graph import build_graph as build_reducer_graph
@@ -83,6 +84,7 @@ def export_all_graphs() -> list[dict[str, str | None]]:
         "day6_checkpointer_graph": build_checkpointer_graph(),
         "day7_interrupt_graph": build_interrupt_graph(),
         "day8_interrupt_safety_graph": build_interrupt_safety_graph(),
+        "day9_idempotency_graph": build_idempotency_graph(),
     }
 
     return [export_graph(name, app) for name, app in graphs.items()]
