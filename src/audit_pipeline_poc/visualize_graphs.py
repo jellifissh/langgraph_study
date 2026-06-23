@@ -22,6 +22,7 @@ from audit_pipeline_poc.interrupt_safety_graph import build_graph as build_inter
 from audit_pipeline_poc.outbox_graph import build_graph as build_outbox_graph
 from audit_pipeline_poc.reducer_graph import build_graph as build_reducer_graph
 from audit_pipeline_poc.state_schema_graph import build_graph as build_state_schema_graph
+from audit_pipeline_poc.tool_calling_graph import build_graph as build_tool_calling_graph
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = PROJECT_ROOT / "outputs" / "graphs"
@@ -87,6 +88,7 @@ def export_all_graphs() -> list[dict[str, str | None]]:
         "day8_interrupt_safety_graph": build_interrupt_safety_graph(),
         "day9_idempotency_graph": build_idempotency_graph(),
         "day10_outbox_graph": build_outbox_graph(),
+        "day11_tool_calling_graph": build_tool_calling_graph(),
     }
 
     return [export_graph(name, app) for name, app in graphs.items()]
