@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from audit_pipeline_poc.agent_loop_graph import build_graph as build_agent_loop_graph
 from audit_pipeline_poc.basic_graph import build_graph as build_basic_graph
 from audit_pipeline_poc.checkpointer_graph import build_graph as build_checkpointer_graph
 from audit_pipeline_poc.conditional_graph import build_graph as build_conditional_graph
@@ -91,6 +92,7 @@ def export_all_graphs() -> list[dict[str, str | None]]:
         "day10_outbox_graph": build_outbox_graph(),
         "day11_tool_calling_graph": build_tool_calling_graph(),
         "day12_llm_planner_graph": build_llm_planner_graph(),
+        "day13_agent_loop_graph": build_agent_loop_graph(),
     }
 
     return [export_graph(name, app) for name, app in graphs.items()]
