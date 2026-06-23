@@ -2,19 +2,17 @@
 
 ## 当前阶段
 
-第 11 天 / 共 30 天
+第 12 天 / 共 30 天
 
 ## 今天目标
 
-学习 Tool Calling / Tool Router：让 graph 先规划要调用哪些工具，再由工具执行节点执行工具，最后综合工具结果做审计结论。
-
-Day 11 开始切回 Agent 主线能力，不再一天只讲一个后端护栏。
+学习 LLM Planner：把 Day 11 的手写 `plan_tool_calls()` 换成模型规划工具调用。模型配置从本机环境变量读取 DeepSeek。
 
 ```text
-START -> intake -> plan_tool_calls -> execute_tools -> synthesize_audit -> route_by_audit_status
-                                                                      ├─ passed      -> delivery -> END
-                                                                      ├─ need_review -> review -> delivery -> END
-                                                                      └─ failed      -> error_report -> END
+START -> intake -> llm_plan_tool_calls -> execute_tools -> synthesize_audit -> route_by_audit_status
+                                                                            ├─ passed      -> delivery -> END
+                                                                            ├─ need_review -> review -> delivery -> END
+                                                                            └─ failed      -> error_report -> END
 ```
 
 ## 已掌握概念
@@ -40,50 +38,56 @@ START -> intake -> plan_tool_calls -> execute_tools -> synthesize_audit -> route
 - Tool Call = 一次工具调用请求，包括工具名和参数
 - Tool Registry = 工具注册表，负责把工具名映射到真实函数
 - Tool Executor = 工具执行节点，负责执行工具并返回结果
+- LLM Planner = 用模型根据任务和工具列表生成 tool_calls
 
-## Day 11 Tool Calling 大白话
+## Day 12 LLM Planner 大白话
 
-普通流程：
-
-```text
-一个节点自己完成所有计算和判断
-```
-
-Tool Calling：
+Day 11：
 
 ```text
-planner 先决定要用哪些工具
-executor 执行工具
-synthesizer 根据工具结果做判断
+规则 planner 手写 tool_calls
 ```
 
-今天先不用真实 LLM，而是用确定性 `plan_tool_calls()` 模拟模型规划工具。
-Day 12 会把 planner 换成 LLM。
-
-## Day 11 需要重点观察
-
-- `ToolCall` 是工具调用请求：`name + args`。
-- `TOOL_REGISTRY` 是工具注册表：把工具名映射到函数。
-- `plan_tool_calls()` 只负责规划，不执行工具。
-- `execute_tools()` 只负责执行工具，不做最终审计判断。
-- `synthesize_audit()` 综合工具结果，生成 `audit_status`。
-
-本项目 Day 11 的工具：
+Day 12：
 
 ```text
-calculate_profit_margin
-classify_profit_margin
-build_audit_recommendation
+把 company / revenue / net_profit / available_tools 给模型
+模型返回 JSON tool_calls
+executor 按 tool_calls 执行工具
 ```
+
+LLM Planner 不是让模型随便幻想工具，而是让模型在已有工具列表里选择。
+
+## DeepSeek 环境变量
+
+本项目读取：
+
+```text
+DEEPSEEK_API_KEY
+DEEPSEEK_BASE_URL
+DEEPSEEK_MODEL
+```
+
+代码不会写死 key。
+测试使用 FakeClient，不会真的请求 DeepSeek。
+本地运行 demo 时，如果环境变量存在会用 DeepSeek；如果没有，会回退到 rule planner。
+
+## Day 12 需要重点观察
+
+- `DeepSeekChatClient.from_env()` 从环境变量读取模型配置。
+- `build_planner_messages()` 把可用工具列表和输出格式发给模型。
+- `parse_tool_calls_from_llm_response()` 解析模型返回的 JSON。
+- `make_llm_plan_tool_calls_node()` 支持注入 FakeClient，测试不依赖真实 API。
+- LLM 失败时可以回退到 rule planner。
 
 ## Agent 主线位置
 
-Day 11 对应 Agent 系统里的这一段：
+Day 12 对应 Agent 系统里的这一段：
 
 ```text
 用户目标
   ↓
-Planner / Router 选择工具
+LLM Planner 根据目标和工具列表生成 tool_calls
   ↓
 Tool Executor 执行工具
   ↓
@@ -92,7 +96,7 @@ Synthesizer 综合工具结果
 Graph 根据结论分流
 ```
 
-这比前几天更接近真正 Agent，而不只是可靠性护栏。
+这是比 Day 11 更接近真实 Agent 的版本。
 
 ## 代码产出记录
 
@@ -117,14 +121,22 @@ Graph 根据结论分流
 | 第 10 天 | `tests/test_outbox_graph.py` | 待本地运行 | 覆盖事件登记、pending/sent、dispatcher 不重复发送 |
 | 第 11 天 | `src/audit_pipeline_poc/tool_calling_graph.py` | 待本地运行 | 工具规划、工具执行、工具结果综合 |
 | 第 11 天 | `tests/test_tool_calling_graph.py` | 待本地运行 | 覆盖工具函数、工具执行错误、passed/review/failed 路径 |
+| 第 12 天 | `src/audit_pipeline_poc/llm_planner_graph.py` | 待本地运行 | DeepSeek LLM planner 生成 tool_calls |
+| 第 12 天 | `tests/test_llm_planner_graph.py` | 待本地运行 | 覆盖 fake client、JSON 解析、未知工具、fallback、env 读取 |
 
 ## 下一步计划
 
-运行第 11 天程序，重点观察 `tool_calls` 和 `tool_results`。
+运行第 12 天程序，重点观察：
+
+- `planner_mode`
+- `llm_prompt`
+- `llm_response`
+- `tool_calls`
+- `tool_results`
 
 重点理解：
 
-- Tool Call 本质是“函数名 + 参数”。
-- Tool Executor 本质是“按名字找函数并调用”。
-- 真实 LLM tool calling 不是魔法，只是由模型生成这些 tool_calls。
-- Day 12 会把手写 planner 换成 LLM planner。
+- LLM Planner 的输出不是自然语言，而是结构化 tool_calls。
+- 模型只能从已有工具列表里选，不能乱造工具。
+- Tool Executor 仍然是确定性执行器。
+- 测试里不要真的请求模型，要用 FakeClient。
