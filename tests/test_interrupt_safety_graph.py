@@ -1,3 +1,5 @@
+import pytest
+
 from audit_pipeline_poc.interrupt_safety_graph import (
     EXTERNAL_REVIEW_LOG,
     build_graph,
@@ -79,9 +81,11 @@ def test_resume_must_use_existing_thread_to_continue_paused_run():
     paused = app.invoke(initial_state(), original_config)
     assert "__interrupt__" in paused
 
-    wrong_result = app.invoke(Command(resume={"decision": "approved"}), wrong_config)
-    assert "__interrupt__" not in wrong_result
-    assert wrong_result == {}
+    # A resume command must point to an existing paused thread.
+    # With a wrong thread_id, this LangGraph version tries to start a fresh run
+    # with an empty state, so our intake validation correctly raises.
+    with pytest.raises(ValueError, match="Missing required field: company"):
+        app.invoke(Command(resume={"decision": "approved"}), wrong_config)
 
     final = app.invoke(
         Command(resume={"decision": "approved", "note": "Correct thread resumed."}),
